@@ -1,0 +1,6 @@
+@CryptoAggregatorPro_HostAddress = http://localhost:5012
+
+GET {{CryptoAggregatorPro_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
