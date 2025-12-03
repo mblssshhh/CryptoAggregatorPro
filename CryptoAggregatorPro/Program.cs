@@ -13,7 +13,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var redisConfig = new StackExchange.Redis.ConfigurationOptions
 {
-    EndPoints = { "localhost:6379" },
+    EndPoints = { "redis:6379" },
     AbortOnConnectFail = false, 
     ConnectRetry = 5, 
     ReconnectRetryPolicy = new ExponentialRetry(1000)
