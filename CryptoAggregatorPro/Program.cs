@@ -1,3 +1,4 @@
+using CryptoAggregatorPro.Services;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 
@@ -20,7 +21,7 @@ var redisConfig = new StackExchange.Redis.ConfigurationOptions
 };
 builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(StackExchange.Redis.ConnectionMultiplexer.Connect(redisConfig));
 
-builder.Services.AddSingleton<CryptoAggregatorPro.Services.RabbitMqService>(); 
+builder.Services.AddSingleton<RabbitMqService>(); 
 
 builder.Services.AddHostedService<CryptoAggregatorPro.Services.BinanceWebSocketService>();
 builder.Services.AddHostedService<CryptoAggregatorPro.Services.KuCoinWebSocketService>();
