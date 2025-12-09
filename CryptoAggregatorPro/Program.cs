@@ -3,9 +3,7 @@ using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.Services.AddControllers();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -15,13 +13,13 @@ builder.Services.AddSwaggerGen(c =>
 var redisConfig = new StackExchange.Redis.ConfigurationOptions
 {
     EndPoints = { "redis:6379" },
-    AbortOnConnectFail = false, 
-    ConnectRetry = 5, 
+    AbortOnConnectFail = false,
+    ConnectRetry = 5,
     ReconnectRetryPolicy = new ExponentialRetry(1000)
 };
 builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(StackExchange.Redis.ConnectionMultiplexer.Connect(redisConfig));
 
-builder.Services.AddSingleton<RabbitMqService>(); 
+builder.Services.AddSingleton<RabbitMqService>();
 
 builder.Services.AddHostedService<CryptoAggregatorPro.Services.BinanceWebSocketService>();
 builder.Services.AddHostedService<CryptoAggregatorPro.Services.KuCoinWebSocketService>();
@@ -38,5 +36,4 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
-
 app.Run();
