@@ -1,4 +1,4 @@
-﻿namespace CryptoAggregatorPro.Models
+﻿namespace CryptoAggregatorPro.Models.DTO
 {
     public class ExchangeStatus
     {

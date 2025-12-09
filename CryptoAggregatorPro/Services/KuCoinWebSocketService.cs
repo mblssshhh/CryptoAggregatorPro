@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Globalization;
 using CryptoAggregatorPro.Helpers;
 using StackExchange.Redis;
+using CryptoAggregatorPro.Models.DTO;
 
 namespace CryptoAggregatorPro.Services
 {
