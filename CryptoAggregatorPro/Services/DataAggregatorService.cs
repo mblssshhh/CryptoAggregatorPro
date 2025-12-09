@@ -32,7 +32,10 @@ namespace CryptoAggregatorPro.Services
                         if (ticker != null)
                         {
                             ticker.Symbol = ticker.Symbol.Replace("-", "");
-                            await db.StringSetAsync($"ticker:{ticker.Symbol}:{ticker.Exchange}", message, TimeSpan.FromMinutes(1));
+                            var key = $"ticker:{ticker.Symbol}:{ticker.Exchange}";
+                            await db.StringSetAsync(key, message, TimeSpan.FromMinutes(1));
+                            var channel = new RedisChannel($"updates:ticker:{ticker.Symbol}:{ticker.Exchange}", RedisChannel.PatternMode.Literal);
+                            await db.PublishAsync(channel, (RedisValue)message);
                         }
                     }
                     else if (message.Contains("\"Bids\"") && message.Contains("\"Asks\""))
@@ -41,7 +44,10 @@ namespace CryptoAggregatorPro.Services
                         if (orderBook != null)
                         {
                             orderBook.Symbol = orderBook.Symbol.Replace("-", "");
-                            await db.StringSetAsync($"orderbook:{orderBook.Symbol}:{orderBook.Exchange}", message, TimeSpan.FromMinutes(1));
+                            var key = $"orderbook:{orderBook.Symbol}:{orderBook.Exchange}";
+                            await db.StringSetAsync(key, message, TimeSpan.FromMinutes(1));
+                            var channel = new RedisChannel($"updates:orderbook:{orderBook.Symbol}:{orderBook.Exchange}", RedisChannel.PatternMode.Literal);
+                            await db.PublishAsync(channel, (RedisValue)message);
                         }
                     }
                     else
