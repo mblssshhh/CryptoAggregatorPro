@@ -25,6 +25,17 @@ namespace CryptoAggregatorPro.Controllers
         }
 
         /// <summary>
+        /// Ping the API to check if it's running
+        /// </summary>
+        /// <returns>Pong response</returns>
+        [HttpGet("ping")]
+        [ProducesResponseType(typeof(string), 200)]
+        public IActionResult Ping()
+        {
+            return Ok("Pong");
+        }
+
+        /// <summary>
         /// Get the current ticker for the specified symbol
         /// </summary>
         /// <param name="symbol">Cryptocurrency symbol (e.g., BTCUSDT, ETHUSDT)</param>
@@ -93,12 +104,10 @@ namespace CryptoAggregatorPro.Controllers
     public class SymbolParameterFilter : IParameterFilter
     {
         private readonly AppSettings _settings;
-
         public SymbolParameterFilter(IOptions<AppSettings> options)
         {
             _settings = options.Value;
         }
-
         public void Apply(OpenApiParameter parameter, ParameterFilterContext context)
         {
             if (parameter.Name == "symbol")
