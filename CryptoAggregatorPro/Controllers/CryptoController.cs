@@ -1,5 +1,6 @@
 ﻿using CryptoAggregatorPro.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using System.Text.Json;
 
@@ -11,18 +12,21 @@ namespace CryptoAggregatorPro.Controllers
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<CryptoController> _logger;
-        public CryptoController(IConnectionMultiplexer redis, ILogger<CryptoController> logger)
+        private readonly AppSettings _settings;
+
+        public CryptoController(IConnectionMultiplexer redis, ILogger<CryptoController> logger, IOptions<AppSettings> options)
         {
             _redis = redis;
             _logger = logger;
+            _settings = options.Value;
         }
+
         [HttpGet("ticker/{symbol}")]
         public async Task<IActionResult> GetTicker(string symbol)
         {
             var db = _redis.GetDatabase();
-            var exchanges = new[] { "Binance", "KuCoin"};
             var result = new Dictionary<string, TickerData?>();
-            foreach (var exchange in exchanges)
+            foreach (var exchange in _settings.Exchanges)
             {
                 var key = $"ticker:{symbol}:{exchange}";
                 var value = await db.StringGetAsync(key);
@@ -42,13 +46,13 @@ namespace CryptoAggregatorPro.Controllers
                 return NotFound("No ticker data available for symbol");
             return Ok(result);
         }
+
         [HttpGet("orderbook/{symbol}")]
         public async Task<IActionResult> GetOrderBook(string symbol)
         {
             var db = _redis.GetDatabase();
-            var exchanges = new[] { "Binance", "KuCoin"};
             var result = new Dictionary<string, OrderBookData?>();
-            foreach (var exchange in exchanges)
+            foreach (var exchange in _settings.Exchanges)
             {
                 var key = $"orderbook:{symbol}:{exchange}";
                 var value = await db.StringGetAsync(key);

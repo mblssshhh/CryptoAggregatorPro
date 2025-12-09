@@ -3,66 +3,61 @@ using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
 using System.Text.Json;
 
-namespace CryptoAggregatorPro.Services;
-
-public class DataAggregatorService : BackgroundService
+namespace CryptoAggregatorPro.Services
 {
-    private readonly RabbitMqService _rabbitMq;
-    private readonly IConnectionMultiplexer _redis;
-    private readonly ILogger<DataAggregatorService> _logger;
-
-    public DataAggregatorService(RabbitMqService rabbitMq, IConnectionMultiplexer redis, ILogger<DataAggregatorService> logger)
+    public class DataAggregatorService : BackgroundService
     {
-        _rabbitMq = rabbitMq;
-        _redis = redis;
-        _logger = logger;
-    }
+        private readonly RabbitMqService _rabbitMq;
+        private readonly IConnectionMultiplexer _redis;
+        private readonly ILogger<DataAggregatorService> _logger;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        await Task.Delay(5000, stoppingToken);
-
-        await _rabbitMq.StartConsumingAsync(async (message) =>
+        public DataAggregatorService(RabbitMqService rabbitMq, IConnectionMultiplexer redis, ILogger<DataAggregatorService> logger)
         {
-            _logger.LogInformation("Received from queue: {msg}", message);
+            _rabbitMq = rabbitMq;
+            _redis = redis;
+            _logger = logger;
+        }
 
-            try
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            await Task.Delay(5000, stoppingToken);
+            await _rabbitMq.StartConsumingAsync(async (message) =>
             {
-                var db = _redis.GetDatabase();
-
-                if (message.Contains("\"Price\"") && message.Contains("\"Volume\"")) 
+                _logger.LogInformation("Received from queue: {msg}", message);
+                try
                 {
-                    var ticker = JsonSerializer.Deserialize<TickerData>(message);
-                    if (ticker != null)
+                    var db = _redis.GetDatabase();
+                    if (message.Contains("\"Price\"") && message.Contains("\"Volume\""))
                     {
-                        ticker.Symbol = ticker.Symbol.Replace("-", "");
-
-                        await db.StringSetAsync($"ticker:{ticker.Symbol}:{ticker.Exchange}", message, TimeSpan.FromMinutes(1));
-                        _logger.LogInformation("Cached ticker in Redis: {symbol} from {exchange}", ticker.Symbol, ticker.Exchange);
+                        var ticker = JsonSerializer.Deserialize<TickerData>(message);
+                        if (ticker != null)
+                        {
+                            ticker.Symbol = ticker.Symbol.Replace("-", "");
+                            await db.StringSetAsync($"ticker:{ticker.Symbol}:{ticker.Exchange}", message, TimeSpan.FromMinutes(1));
+                            _logger.LogInformation("Cached ticker in Redis: {symbol} from {exchange}", ticker.Symbol, ticker.Exchange);
+                        }
+                    }
+                    else if (message.Contains("\"Bids\"") && message.Contains("\"Asks\""))
+                    {
+                        var orderBook = JsonSerializer.Deserialize<OrderBookData>(message);
+                        if (orderBook != null)
+                        {
+                            orderBook.Symbol = orderBook.Symbol.Replace("-", "");
+                            await db.StringSetAsync($"orderbook:{orderBook.Symbol}:{orderBook.Exchange}", message, TimeSpan.FromMinutes(1));
+                            _logger.LogInformation("Cached orderbook in Redis: {symbol} from {exchange}", orderBook.Symbol, orderBook.Exchange);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Unknown message type: {msg}", message);
                     }
                 }
-                else if (message.Contains("\"Bids\"") && message.Contains("\"Asks\"")) 
+                catch (Exception ex)
                 {
-                    var orderBook = JsonSerializer.Deserialize<OrderBookData>(message);
-                    if (orderBook != null)
-                    {
-                        orderBook.Symbol = orderBook.Symbol.Replace("-", "");
-
-                        await db.StringSetAsync($"orderbook:{orderBook.Symbol}:{orderBook.Exchange}", message, TimeSpan.FromMinutes(1));
-                        _logger.LogInformation("Cached orderbook in Redis: {symbol} from {exchange}", orderBook.Symbol, orderBook.Exchange);
-                    }
+                    _logger.LogError(ex, "Error processing message: {msg}", message);
                 }
-                else
-                {
-                    _logger.LogWarning("Unknown message type: {msg}", message);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing message: {msg}", message);
-            }
-        });
-
-        await Task.Delay(Timeout.Infinite, stoppingToken);
+            });
+            await Task.Delay(Timeout.Infinite, stoppingToken);
+        }
     }
 }

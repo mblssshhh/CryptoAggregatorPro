@@ -29,7 +29,6 @@ namespace CryptoAggregatorPro.Services
                 try
                 {
                     _logger.LogInformation("Connection to RabbitMQ... ({0}/{1})", attempt, _maxRetries);
-
                     var factory = new ConnectionFactory
                     {
                         HostName = "rabbitmq",
@@ -39,30 +38,25 @@ namespace CryptoAggregatorPro.Services
                         AutomaticRecoveryEnabled = true,
                         NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
                     };
-
                     _connection = await factory.CreateConnectionAsync();
                     _channel = await _connection.CreateChannelAsync();
-
                     await _channel.QueueDeclareAsync(
                         queue: QueueName,
-                        durable: true,        
+                        durable: true,
                         exclusive: false,
                         autoDelete: false,
                         arguments: null);
-
                     _logger.LogInformation("Connection to RabbitMQ is success. Queue '{Queue}' is created.", QueueName);
                     return;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error connecting to RabbitMQ. Repeat in {Delay}с...", _retryDelay.TotalSeconds);
-
                     if (attempt >= _maxRetries)
                     {
                         _logger.LogError("The number of connection attempts to RabbitMQ has been exhausted.");
                         throw;
                     }
-
                     await Task.Delay(_retryDelay);
                 }
             }
@@ -71,23 +65,19 @@ namespace CryptoAggregatorPro.Services
         public async Task SendMessageAsync<T>(T data)
         {
             await EnsureConnectedAsync();
-
             var message = JsonSerializer.Serialize(data);
             var body = Encoding.UTF8.GetBytes(message);
-
             await _channel!.BasicPublishAsync(
                 exchange: string.Empty,
                 routingKey: QueueName,
                 mandatory: false,
                 body: body);
-
             _logger.LogInformation("[RabbitMQ] Send: {Message}", message);
         }
 
         public async Task StartConsumingAsync(Func<string, Task> onMessageReceived)
         {
             await EnsureConnectedAsync();
-
             var consumer = new AsyncEventingBasicConsumer(_channel!);
             consumer.ReceivedAsync += async (model, ea) =>
             {
@@ -102,10 +92,9 @@ namespace CryptoAggregatorPro.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing message from RabbitMQ");
-                    await _channel!.BasicNackAsync(ea.DeliveryTag, false, true); 
+                    await _channel!.BasicNackAsync(ea.DeliveryTag, false, true);
                 }
             };
-
             await _channel!.BasicConsumeAsync(
                 queue: QueueName,
                 autoAck: false,

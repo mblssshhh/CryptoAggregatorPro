@@ -1,4 +1,5 @@
 ﻿using CryptoAggregatorPro.Models;
+using Microsoft.Extensions.Options;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -9,13 +10,15 @@ namespace CryptoAggregatorPro.Services
     {
         private readonly RabbitMqService _rabbitMq;
         private readonly ILogger<BinanceWebSocketService> _logger;
-        private readonly string[] _symbols = { "btcusdt", "ethusdt" };
-        private readonly TimeSpan _reconnectDelay = TimeSpan.FromSeconds(5);
+        private readonly AppSettings _settings;
+        private TimeSpan _reconnectDelay;
 
-        public BinanceWebSocketService(RabbitMqService rabbitMq, ILogger<BinanceWebSocketService> logger)
+        public BinanceWebSocketService(RabbitMqService rabbitMq, ILogger<BinanceWebSocketService> logger, IOptions<AppSettings> options)
         {
             _rabbitMq = rabbitMq;
             _logger = logger;
+            _settings = options.Value;
+            _reconnectDelay = TimeSpan.FromSeconds(_settings.ReconnectDelaySeconds);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -28,7 +31,7 @@ namespace CryptoAggregatorPro.Services
                     _logger.LogInformation("Connecting to Binance WebSocket...");
                     await ws.ConnectAsync(new Uri("wss://stream.binance.com:9443/stream"), stoppingToken);
                     var paramsList = new List<string>();
-                    foreach (var symbol in _symbols)
+                    foreach (var symbol in _settings.Symbols.Select(s => s.ToLowerInvariant()))
                     {
                         paramsList.Add($"{symbol}@ticker");
                         paramsList.Add($"{symbol}@depth5@100ms");

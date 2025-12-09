@@ -1,8 +1,10 @@
+using CryptoAggregatorPro.Models;
 using CryptoAggregatorPro.Services;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -17,13 +19,14 @@ var redisConfig = new StackExchange.Redis.ConfigurationOptions
     ConnectRetry = 5,
     ReconnectRetryPolicy = new ExponentialRetry(1000)
 };
+
 builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(StackExchange.Redis.ConnectionMultiplexer.Connect(redisConfig));
-
 builder.Services.AddSingleton<RabbitMqService>();
+builder.Services.AddHostedService<BinanceWebSocketService>();
+builder.Services.AddHostedService<KuCoinWebSocketService>();
+builder.Services.AddHostedService<DataAggregatorService>();
 
-builder.Services.AddHostedService<CryptoAggregatorPro.Services.BinanceWebSocketService>();
-builder.Services.AddHostedService<CryptoAggregatorPro.Services.KuCoinWebSocketService>();
-builder.Services.AddHostedService<CryptoAggregatorPro.Services.DataAggregatorService>();
+builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 
 var app = builder.Build();
 
