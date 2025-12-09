@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Globalization;
 using CryptoAggregatorPro.Helpers;
+using StackExchange.Redis;
 
 namespace CryptoAggregatorPro.Services
 {
@@ -16,14 +17,16 @@ namespace CryptoAggregatorPro.Services
         private readonly AppSettings _settings;
         private TimeSpan _reconnectDelay;
         private int _pingIntervalMs;
+        IConnectionMultiplexer _redis;
 
-        public KuCoinWebSocketService(RabbitMqService rabbitMq, ILogger<KuCoinWebSocketService> logger, IOptions<AppSettings> options)
+        public KuCoinWebSocketService(RabbitMqService rabbitMq, ILogger<KuCoinWebSocketService> logger, IOptions<AppSettings> options, IConnectionMultiplexer redis)
         {
             _rabbitMq = rabbitMq;
             _logger = logger;
             _settings = options.Value;
             _reconnectDelay = TimeSpan.FromSeconds(_settings.ReconnectDelaySeconds);
             _pingIntervalMs = _settings.PingIntervalMs;
+            _redis = redis;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -38,6 +41,7 @@ namespace CryptoAggregatorPro.Services
                 {
                     var response = await httpClient.PostAsync("https://api.kucoin.com/api/v1/bullet-public", null, stoppingToken);
                     response.EnsureSuccessStatusCode();
+                    await UpdateStatusAsync("KuCoin", "Connected");
                     var responseJson = await response.Content.ReadAsStringAsync(stoppingToken);
                     using var doc = JsonDocument.Parse(responseJson);
                     var data = doc.RootElement.GetProperty("data");
@@ -76,6 +80,7 @@ namespace CryptoAggregatorPro.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "KuCoin WebSocket error, reconnecting...");
+                    await UpdateStatusAsync("KuCoin", "Disconnected");
                 }
                 finally
                 {
@@ -84,6 +89,7 @@ namespace CryptoAggregatorPro.Services
                     if (pingTask != null) { try { await pingTask; } catch { } }
                 }
                 await Task.Delay(_reconnectDelay, stoppingToken);
+                await UpdateStatusAsync("KuCoin", "Disconnected");
             }
         }
 
@@ -203,6 +209,13 @@ namespace CryptoAggregatorPro.Services
                 try { await ws.SendAsync(bytes, WebSocketMessageType.Text, true, ct); }
                 catch { break; }
             }
+        }
+
+        private async Task UpdateStatusAsync(string exchange, string status)
+        {
+            var db = _redis.GetDatabase();
+            var exchangeStatus = new ExchangeStatus { Status = status, LastUpdate = DateTime.UtcNow };
+            await db.StringSetAsync($"status:{exchange}", JsonSerializer.Serialize(exchangeStatus), TimeSpan.FromMinutes(5));
         }
     }
 }

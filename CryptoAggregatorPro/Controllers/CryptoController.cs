@@ -25,17 +25,6 @@ namespace CryptoAggregatorPro.Controllers
         }
 
         /// <summary>
-        /// Ping the API to check if it's running
-        /// </summary>
-        /// <returns>Pong response</returns>
-        [HttpGet("ping")]
-        [ProducesResponseType(typeof(string), 200)]
-        public IActionResult Ping()
-        {
-            return Ok("Pong");
-        }
-
-        /// <summary>
         /// Get the current ticker for the specified symbol
         /// </summary>
         /// <param name="symbol">Cryptocurrency symbol (e.g., BTCUSDT, ETHUSDT)</param>

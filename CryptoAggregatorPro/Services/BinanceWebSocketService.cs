@@ -1,5 +1,6 @@
 ﻿using CryptoAggregatorPro.Models;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -12,13 +13,15 @@ namespace CryptoAggregatorPro.Services
         private readonly ILogger<BinanceWebSocketService> _logger;
         private readonly AppSettings _settings;
         private TimeSpan _reconnectDelay;
+        private readonly IConnectionMultiplexer _redis;
 
-        public BinanceWebSocketService(RabbitMqService rabbitMq, ILogger<BinanceWebSocketService> logger, IOptions<AppSettings> options)
+        public BinanceWebSocketService(RabbitMqService rabbitMq, ILogger<BinanceWebSocketService> logger, IOptions<AppSettings> options, IConnectionMultiplexer redis)
         {
             _rabbitMq = rabbitMq;
             _logger = logger;
             _settings = options.Value;
             _reconnectDelay = TimeSpan.FromSeconds(_settings.ReconnectDelaySeconds);
+            _redis = redis;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -29,6 +32,7 @@ namespace CryptoAggregatorPro.Services
                 try
                 {
                     await ws.ConnectAsync(new Uri("wss://stream.binance.com:9443/stream"), stoppingToken);
+                    await UpdateStatusAsync("Binance", "Connected");
                     var paramsList = new List<string>();
                     foreach (var symbol in _settings.Symbols.Select(s => s.ToLowerInvariant()))
                     {
@@ -101,6 +105,7 @@ namespace CryptoAggregatorPro.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error in Binance WebSocket connection. Reconnecting...");
+                    await UpdateStatusAsync("Binance", "Disconnected");
                 }
                 finally
                 {
@@ -109,6 +114,7 @@ namespace CryptoAggregatorPro.Services
                         try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", stoppingToken); } catch { }
                     }
                     await Task.Delay(_reconnectDelay, stoppingToken);
+                    await UpdateStatusAsync("Binance", "Disconnected");
                 }
             }
         }
@@ -121,6 +127,13 @@ namespace CryptoAggregatorPro.Services
                     Price = decimal.Parse(item[0].GetString()!),
                     Quantity = decimal.Parse(item[1].GetString()!)
                 }).ToList();
+        }
+
+        private async Task UpdateStatusAsync(string exchange, string status)
+        {
+            var db = _redis.GetDatabase();
+            var exchangeStatus = new ExchangeStatus { Status = status, LastUpdate = DateTime.UtcNow };
+            await db.StringSetAsync($"status:{exchange}", JsonSerializer.Serialize(exchangeStatus), TimeSpan.FromMinutes(5));
         }
     }
 }
