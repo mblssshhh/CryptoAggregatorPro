@@ -1,9 +1,11 @@
 using CryptoAggregatorPro.Controllers;
 using CryptoAggregatorPro.Models;
 using CryptoAggregatorPro.Services;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
@@ -20,6 +22,18 @@ builder.Services.AddSwaggerGen(c =>
     {
         UseAllOfForInheritance = true
     };
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("fixed", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 100; 
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 10;
+    });
+    options.RejectionStatusCode = 429; 
 });
 
 var redisConfig = new StackExchange.Redis.ConfigurationOptions
@@ -39,6 +53,7 @@ builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSet
 var app = builder.Build();
 
 app.UseWebSockets();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
