@@ -1,3 +1,4 @@
+using CryptoAggregatorPro.Controllers;
 using CryptoAggregatorPro.Models;
 using CryptoAggregatorPro.Services;
 using Microsoft.OpenApi.Models;
@@ -10,7 +11,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Crypto Aggregator Pro API", Version = "v1" });
+    c.ParameterFilter<SymbolParameterFilter>();
 });
+
 
 var redisConfig = new StackExchange.Redis.ConfigurationOptions
 {
