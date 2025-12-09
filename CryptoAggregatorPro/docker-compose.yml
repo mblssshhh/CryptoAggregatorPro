@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   app:
     build:
@@ -10,28 +9,38 @@ services:
     depends_on:
       - rabbitmq
       - redis
+    env_file:
+      - .env
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:80 
-
+      - ASPNETCORE_URLS=http://+:80
+    entrypoint: ["/wait-for-it.sh", "redis:6379", "--timeout=60", "--", "/wait-for-it.sh", "rabbitmq:5672", "--timeout=60", "--", "dotnet", "CryptoAggregatorPro.dll"]
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "5672:5672"  
-      - "15672:15672"  
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - .env
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
-
+      start_period: 30s
   redis:
     image: redis:latest
     ports:
       - "6379:6379"
+    env_file:
+      - .env
+    command: redis-server --requirepass "${REDIS_PASSWORD}"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s

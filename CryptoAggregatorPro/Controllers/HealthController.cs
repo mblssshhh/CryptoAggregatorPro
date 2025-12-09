@@ -1,6 +1,7 @@
 ﻿using CryptoAggregatorPro.Models;
 using CryptoAggregatorPro.Models.DTO;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using System.Runtime;
@@ -10,6 +11,7 @@ namespace CryptoAggregatorPro.Controllers
 {
     [ApiController]
     [Route("api/health")]
+    [EnableRateLimiting("fixed")]
     public class HealthController : ControllerBase
     {
 

@@ -7,11 +7,13 @@ using Microsoft.OpenApi.Any;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.OpenApi.Models;
 using CryptoAggregatorPro.Models.DTO;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CryptoAggregatorPro.Controllers
 {
     [ApiController]
     [Route("api/crypto")]
+    [EnableRateLimiting("fixed")]
     public class CryptoController : ControllerBase
     {
         private readonly IConnectionMultiplexer _redis;

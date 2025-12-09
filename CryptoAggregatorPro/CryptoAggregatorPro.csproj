@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Binance.Net" Version="11.11.0" />
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Kucoin.Net" Version="7.11.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.22" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.0" />

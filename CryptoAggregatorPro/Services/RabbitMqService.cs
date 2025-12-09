@@ -2,7 +2,6 @@
 using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
-
 namespace CryptoAggregatorPro.Services
 {
     public class RabbitMqService : IAsyncDisposable
@@ -11,15 +10,13 @@ namespace CryptoAggregatorPro.Services
         private IChannel? _channel;
         private const string QueueName = "crypto_data_queue";
         private readonly ILogger<RabbitMqService> _logger;
-        private readonly TimeSpan _retryDelay = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _retryDelay = TimeSpan.FromSeconds(10);
         private const int _maxRetries = 30;
-
         public RabbitMqService(ILogger<RabbitMqService> logger)
         {
             _logger = logger;
             _ = InitializeAsync();
         }
-
         private async Task InitializeAsync()
         {
             int attempt = 0;
@@ -30,10 +27,10 @@ namespace CryptoAggregatorPro.Services
                 {
                     var factory = new ConnectionFactory
                     {
-                        HostName = "rabbitmq",
-                        Port = 5672,
-                        UserName = "guest",
-                        Password = "guest",
+                        HostName = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "rabbitmq",
+                        Port = int.Parse(Environment.GetEnvironmentVariable("RABBITMQ_PORT") ?? "5672"),
+                        UserName = Environment.GetEnvironmentVariable("RABBITMQ_USERNAME") ?? "guest",
+                        Password = Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest",
                         AutomaticRecoveryEnabled = true,
                         NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
                     };
@@ -49,6 +46,7 @@ namespace CryptoAggregatorPro.Services
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError(ex, $"Failed to connect to RabbitMQ, attempt {attempt}");
                     if (attempt >= _maxRetries)
                     {
                         throw;
@@ -57,7 +55,6 @@ namespace CryptoAggregatorPro.Services
                 }
             }
         }
-
         public async Task SendMessageAsync<T>(T data)
         {
             await EnsureConnectedAsync();
@@ -69,7 +66,6 @@ namespace CryptoAggregatorPro.Services
                 mandatory: false,
                 body: body);
         }
-
         public async Task StartConsumingAsync(Func<string, Task> onMessageReceived)
         {
             await EnsureConnectedAsync();
@@ -85,6 +81,7 @@ namespace CryptoAggregatorPro.Services
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError(ex, "Error processing message");
                     await _channel!.BasicNackAsync(ea.DeliveryTag, false, true);
                 }
             };
@@ -93,7 +90,6 @@ namespace CryptoAggregatorPro.Services
                 autoAck: false,
                 consumer: consumer);
         }
-
         private async Task EnsureConnectedAsync()
         {
             while (_channel == null || !_channel.IsOpen)
@@ -101,7 +97,6 @@ namespace CryptoAggregatorPro.Services
                 await Task.Delay(500);
             }
         }
-
         public async ValueTask DisposeAsync()
         {
             if (_channel != null) await _channel.CloseAsync();
