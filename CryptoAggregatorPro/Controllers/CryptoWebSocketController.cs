@@ -9,6 +9,13 @@ using System.Text.Json;
 
 namespace CryptoAggregatorPro.Controllers
 {
+    /// <summary>
+    /// Provides WebSocket streaming for cryptocurrency market data.
+    /// </summary>
+    /// <remarks>
+    /// This controller establishes a persistent WebSocket connection and streams crypto data 
+    /// (ticker, orderbook, aggregated data) in real time from Redis cache.
+    /// </remarks>
     [ApiController]
     [Route("api/crypto/ws")]
     public class CryptoWebSocketController : ControllerBase
@@ -24,6 +31,13 @@ namespace CryptoAggregatorPro.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Opens a WebSocket connection and subscribes the client to market updates based on requested type and symbol.
+        /// </summary>
+        /// <param name="type">Type of WebSocket data stream (ticker, orderbook, aggregated-ticker, best-orderbook).</param>
+        /// <param name="symbol">Cryptocurrency symbol (e.g., BTCUSDT).</param>
+        /// <returns>WebSocket stream with real-time crypto updates.</returns>
+        /// <response code="400">The request was not a valid WebSocket request.</response>
         [HttpGet("{type}/{symbol}")]
         public async Task Get([FromRoute, BindRequired] WebSocketType type, string symbol)
         {
@@ -38,6 +52,9 @@ namespace CryptoAggregatorPro.Controllers
             }
         }
 
+        /// <summary>
+        /// Handles WebSocket lifecycle, Redis subscription, and message broadcasting.
+        /// </summary>
         private async Task HandleWebSocketAsync(WebSocket webSocket, string type, string symbol)
         {
             var subscriber = _redis.GetSubscriber();
@@ -68,9 +85,7 @@ namespace CryptoAggregatorPro.Controllers
             };
 
             foreach (var channel in channels)
-            {
                 await subscriber.SubscribeAsync(channel, handler);
-            }
 
             var buffer = new byte[1024 * 4];
             while (webSocket.State == WebSocketState.Open)
@@ -81,12 +96,14 @@ namespace CryptoAggregatorPro.Controllers
             }
 
             foreach (var channel in GetChannels(type, symbol))
-            {
                 await subscriber.UnsubscribeAsync(channel);
-            }
+
             await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", cancellationToken);
         }
 
+        /// <summary>
+        /// Builds a list of Redis channels to subscribe to based on the WebSocket request type.
+        /// </summary>
         private RedisChannel[] GetChannels(string type, string symbol)
         {
             var baseChannels = _settings.Exchanges.Select(ex => (RedisChannel)$"updates:{type}:{symbol}:{ex}").ToArray();
@@ -98,14 +115,19 @@ namespace CryptoAggregatorPro.Controllers
             };
         }
 
+        /// <summary>
+        /// Retrieves data from Redis and prepares the message results depending on requested WebSocket type.
+        /// </summary>
         private async Task<object?> GetDataAsync(string type, string symbol, IDatabase db, RedisValue message)
         {
             switch (type)
             {
                 case "ticker":
                     return JsonSerializer.Deserialize<TickerData>(message!);
+
                 case "orderbook":
                     return JsonSerializer.Deserialize<OrderBookData>(message!);
+
                 case "aggregated-ticker":
                     var tickers = new List<TickerData>();
                     foreach (var exchange in _settings.Exchanges)
@@ -129,6 +151,7 @@ namespace CryptoAggregatorPro.Controllers
                         Timestamp = tickers.Max(t => t.Timestamp),
                         ExchangesCount = tickers.Count
                     };
+
                 case "best-orderbook":
                     var orderBooks = new List<OrderBookData>();
                     foreach (var exchange in _settings.Exchanges)
@@ -151,12 +174,16 @@ namespace CryptoAggregatorPro.Controllers
                         BestAsk = bestAsk,
                         Timestamp = DateTime.UtcNow
                     };
+
                 default:
                     return null;
             }
         }
     }
-    
+
+    /// <summary>
+    /// Types of supported WebSocket streams for crypto market data.
+    /// </summary>
     public enum WebSocketType
     {
         ticker,
