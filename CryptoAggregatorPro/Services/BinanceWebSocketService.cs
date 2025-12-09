@@ -28,7 +28,6 @@ namespace CryptoAggregatorPro.Services
                 using var ws = new ClientWebSocket();
                 try
                 {
-                    _logger.LogInformation("Connecting to Binance WebSocket...");
                     await ws.ConnectAsync(new Uri("wss://stream.binance.com:9443/stream"), stoppingToken);
                     var paramsList = new List<string>();
                     foreach (var symbol in _settings.Symbols.Select(s => s.ToLowerInvariant()))
@@ -43,7 +42,6 @@ namespace CryptoAggregatorPro.Services
                         id = 1
                     });
                     await ws.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(subMessage)), WebSocketMessageType.Text, true, stoppingToken);
-                    _logger.LogInformation("Subscribed to Binance streams.");
                     var buffer = new byte[4096];
                     while (ws.State == WebSocketState.Open)
                     {

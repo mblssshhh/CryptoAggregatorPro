@@ -44,7 +44,7 @@ namespace CryptoAggregatorPro.Services
                     var token = data.GetProperty("token").GetString();
                     var server = data.GetProperty("instanceServers")[0];
                     var endpoint = server.GetProperty("endpoint").GetString();
-                    _pingIntervalMs = server.GetProperty("pingInterval").GetInt32(); // Override from API if needed
+                    _pingIntervalMs = server.GetProperty("pingInterval").GetInt32(); 
                     var connectId = Guid.NewGuid().ToString();
                     var uri = new Uri($"{endpoint}?token={token}&connectId={connectId}");
                     ws = new ClientWebSocket();

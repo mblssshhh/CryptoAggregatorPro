@@ -36,28 +36,22 @@ namespace CryptoAggregatorPro.Controllers
         {
             var db = _redis.GetDatabase();
             var result = new Dictionary<string, TickerData?>();
-
             foreach (var exchange in _settings.Exchanges)
             {
                 var key = $"ticker:{symbol}:{exchange}";
                 var value = await db.StringGetAsync(key);
-
                 if (!value.IsNull)
                 {
                     var ticker = JsonSerializer.Deserialize<TickerData>(value!);
                     result[exchange] = ticker;
-                    _logger.LogInformation("Retrieved ticker from Redis: {key}", key);
                 }
                 else
                 {
                     result[exchange] = null;
-                    _logger.LogWarning("No data for {key} in Redis", key);
                 }
             }
-
             if (result.All(r => r.Value == null))
                 return NotFound("No ticker data available for symbol");
-
             return Ok(result);
         }
 
@@ -73,28 +67,22 @@ namespace CryptoAggregatorPro.Controllers
         {
             var db = _redis.GetDatabase();
             var result = new Dictionary<string, OrderBookData?>();
-
             foreach (var exchange in _settings.Exchanges)
             {
                 var key = $"orderbook:{symbol}:{exchange}";
                 var value = await db.StringGetAsync(key);
-
                 if (!value.IsNull)
                 {
                     var orderBook = JsonSerializer.Deserialize<OrderBookData>(value!);
                     result[exchange] = orderBook;
-                    _logger.LogInformation("Retrieved orderbook from Redis: {key}", key);
                 }
                 else
                 {
                     result[exchange] = null;
-                    _logger.LogWarning("No data for {key} in Redis", key);
                 }
             }
-
             if (result.All(r => r.Value == null))
                 return NotFound("No orderbook data available for symbol");
-
             return Ok(result);
         }
     }
@@ -116,10 +104,9 @@ namespace CryptoAggregatorPro.Controllers
             if (parameter.Name == "symbol")
             {
                 parameter.Schema.Enum = _settings.Symbols
-                    .Distinct() 
+                    .Distinct()
                     .Select(s => new OpenApiString(s) as IOpenApiAny)
                     .ToList();
-
             }
         }
     }

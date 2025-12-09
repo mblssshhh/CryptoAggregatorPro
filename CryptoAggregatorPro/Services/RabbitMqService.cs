@@ -28,7 +28,6 @@ namespace CryptoAggregatorPro.Services
                 attempt++;
                 try
                 {
-                    _logger.LogInformation("Connection to RabbitMQ... ({0}/{1})", attempt, _maxRetries);
                     var factory = new ConnectionFactory
                     {
                         HostName = "rabbitmq",
@@ -46,15 +45,12 @@ namespace CryptoAggregatorPro.Services
                         exclusive: false,
                         autoDelete: false,
                         arguments: null);
-                    _logger.LogInformation("Connection to RabbitMQ is success. Queue '{Queue}' is created.", QueueName);
                     return;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error connecting to RabbitMQ. Repeat in {Delay}с...", _retryDelay.TotalSeconds);
                     if (attempt >= _maxRetries)
                     {
-                        _logger.LogError("The number of connection attempts to RabbitMQ has been exhausted.");
                         throw;
                     }
                     await Task.Delay(_retryDelay);
@@ -72,7 +68,6 @@ namespace CryptoAggregatorPro.Services
                 routingKey: QueueName,
                 mandatory: false,
                 body: body);
-            _logger.LogInformation("[RabbitMQ] Send: {Message}", message);
         }
 
         public async Task StartConsumingAsync(Func<string, Task> onMessageReceived)
@@ -87,11 +82,9 @@ namespace CryptoAggregatorPro.Services
                 {
                     await onMessageReceived(message);
                     await _channel!.BasicAckAsync(ea.DeliveryTag, false);
-                    _logger.LogInformation("[RabbitMQ] Processed: {Message}", message);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing message from RabbitMQ");
                     await _channel!.BasicNackAsync(ea.DeliveryTag, false, true);
                 }
             };

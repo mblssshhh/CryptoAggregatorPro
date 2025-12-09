@@ -23,7 +23,6 @@ namespace CryptoAggregatorPro.Services
             await Task.Delay(5000, stoppingToken);
             await _rabbitMq.StartConsumingAsync(async (message) =>
             {
-                _logger.LogInformation("Received from queue: {msg}", message);
                 try
                 {
                     var db = _redis.GetDatabase();
@@ -34,7 +33,6 @@ namespace CryptoAggregatorPro.Services
                         {
                             ticker.Symbol = ticker.Symbol.Replace("-", "");
                             await db.StringSetAsync($"ticker:{ticker.Symbol}:{ticker.Exchange}", message, TimeSpan.FromMinutes(1));
-                            _logger.LogInformation("Cached ticker in Redis: {symbol} from {exchange}", ticker.Symbol, ticker.Exchange);
                         }
                     }
                     else if (message.Contains("\"Bids\"") && message.Contains("\"Asks\""))
@@ -44,17 +42,16 @@ namespace CryptoAggregatorPro.Services
                         {
                             orderBook.Symbol = orderBook.Symbol.Replace("-", "");
                             await db.StringSetAsync($"orderbook:{orderBook.Symbol}:{orderBook.Exchange}", message, TimeSpan.FromMinutes(1));
-                            _logger.LogInformation("Cached orderbook in Redis: {symbol} from {exchange}", orderBook.Symbol, orderBook.Exchange);
                         }
                     }
                     else
                     {
-                        _logger.LogWarning("Unknown message type: {msg}", message);
+                        _logger.LogWarning("Unknown message type");
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing message: {msg}", message);
+                    _logger.LogError(ex, "Error processing message");
                 }
             });
             await Task.Delay(Timeout.Infinite, stoppingToken);
